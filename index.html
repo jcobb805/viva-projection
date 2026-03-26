@@ -328,27 +328,44 @@ function makeChart(id, cfg){
 }
 
 function renderKPIs(){
-  // Overview KPIs
+  // Overview KPIs — distribution-model-aware
   const totalIncome = g('income').filter(v=>v!==null).reduce((a,b)=>a+b,0);
   const totalNCF = g('ncf').filter(v=>v!==null).reduce((a,b)=>a+b,0);
   const totalDebtSvc = g('debtSvc').filter(v=>v!==null).reduce((a,b)=>a+b,0);
-  const peakCash = Math.max(...g('cash').filter(v=>v!==null));
   const peakDebt = Math.max(...g('debtBal').filter(v=>v!==null));
-  // Find payoff month
-  const db = g('debtBal');
-  let payoffLabel = '—';
-  for(let i=0;i<db.length;i++){
-    if(db[i]!==null && db[i]<=0){ payoffLabel=timeline[i]; break; }
+
+  // Use distribution model for payoff date & cash position
+  const ovModel = (typeof runDistModel === 'function') ? runDistModel() : null;
+  let payoffLabel = '\u2014';
+  let payoffSub = '';
+  let endingCash = 0;
+  let endingDebt = 0;
+  if(ovModel){
+    const dm = ovModel.monthly;
+    const last = dm[dm.length-1];
+    endingCash = last.cumRemaining + last.cumDist;
+    endingDebt = last.debtBal;
+    for(const row of dm){
+      if(row.debtBal <= 0){ payoffLabel = row.label; break; }
+    }
+    if(payoffLabel === '\u2014') payoffLabel = 'Beyond 2041';
+    payoffSub = fmtFull(monthlyPaydown)+'/mo paydown';
+  } else {
+    const db = g('debtBal');
+    for(let i=0;i<db.length;i++){
+      if(db[i]!==null && db[i]<=0){ payoffLabel=timeline[i]; break; }
+    }
+    endingCash = Math.max(...g('cash').filter(v=>v!==null));
+    payoffSub = '100% net applied to debt';
   }
 
-  document.getElementById('kpi-overview').innerHTML = `
-    <div class="kpi green"><div class="label">Total Projected Income</div><div class="value">${fmt(totalIncome)}</div><div class="sub">Sep 2024 – Dec 2041</div></div>
-    <div class="kpi blue"><div class="label">Total Net Cash Flow</div><div class="value">${fmt(totalNCF)}</div><div class="sub">After expenses & debt service</div></div>
-    <div class="kpi amber"><div class="label">Total Debt Service</div><div class="value">${fmt(totalDebtSvc)}</div><div class="sub">Through payoff</div></div>
-    <div class="kpi purple"><div class="label">Peak Cash Position</div><div class="value">${fmt(peakCash)}</div><div class="sub">If debt paid as agreed</div></div>
-    <div class="kpi green"><div class="label">Debt Payoff Date</div><div class="value">${payoffLabel}</div><div class="sub">100% net applied to debt</div></div>
-    <div class="kpi red"><div class="label">Peak Debt Balance</div><div class="value">${fmt(peakDebt)}</div><div class="sub">Maximum outstanding</div></div>
-  `;
+  document.getElementById('kpi-overview').innerHTML =
+    '<div class="kpi green"><div class="label">Total Projected Income</div><div class="value">'+fmt(totalIncome)+'</div><div class="sub">Sep 2024 \u2013 Dec 2041</div></div>'+
+    '<div class="kpi blue"><div class="label">Total Net Cash Flow</div><div class="value">'+fmt(totalNCF)+'</div><div class="sub">After expenses & debt service</div></div>'+
+    '<div class="kpi amber"><div class="label">Total Debt Service</div><div class="value">'+fmt(totalDebtSvc)+'</div><div class="sub">Through payoff</div></div>'+
+    '<div class="kpi '+(endingDebt<=0?'green':'red')+'"><div class="label">Debt Payoff Date</div><div class="value">'+payoffLabel+'</div><div class="sub">'+payoffSub+'</div></div>'+
+    '<div class="kpi purple"><div class="label">Ending Debt Balance</div><div class="value">'+fmt(endingDebt)+'</div><div class="sub">Dec 2041</div></div>'+
+    '<div class="kpi red"><div class="label">Peak Debt Balance</div><div class="value">'+fmt(peakDebt)+'</div><div class="sub">Maximum outstanding</div></div>';
 
   // Cash Flow KPIs — distribution-aware
   const distModel = (typeof runDistModel === 'function') ? runDistModel() : null;
