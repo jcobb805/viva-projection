@@ -157,7 +157,7 @@ tr:hover td{background:#1e2030}
 <div class="dashboard" id="tab-distributions">
   <div class="kpi-row" id="kpi-dist"></div>
   <div class="chart-row full">
-    <div class="chart-box"><h3>Monthly Cash Flow Waterfall (Income - Expenses - Debt Service - Distribution - Paydown)</h3><canvas id="chartDistWaterfall"></canvas></div>
+    <div class="chart-box"><h3>Monthly Cash Flow Waterfall (Income - Expenses - Debt Service - Paydown - Distribution)</h3><canvas id="chartDistWaterfall"></canvas></div>
   </div>
   <div class="chart-row">
     <div class="chart-box"><h3>Cumulative Distributions vs Cumulative Principal Paid</h3><canvas id="chartDistCum"></canvas></div>
@@ -669,14 +669,14 @@ function runDistModel(){
     const ncf = inc - exp - ds;
     let distActual = 0, paydownActual = 0, surplus = 0;
     if(ncf > 0){
-      distActual = Math.min(monthlyDist, ncf);
-      let remaining = ncf - distActual;
-      if(debtBal > 0 && remaining > 0){
-        paydownActual = Math.min(monthlyPaydown, remaining, debtBal);
-        remaining -= paydownActual;
+      // Paydown first, then distribute remainder
+      if(debtBal > 0){
+        paydownActual = Math.min(monthlyPaydown, ncf, debtBal);
         debtBal -= paydownActual;
       }
-      surplus = remaining;
+      let remaining = ncf - paydownActual;
+      distActual = Math.min(monthlyDist, remaining);
+      surplus = remaining - distActual;
     } else {
       surplus = ncf;
     }
@@ -748,8 +748,8 @@ function renderDistributions(){
   makeChart('chartDistWaterfall',{
     type:'bar',
     data:{labels,datasets:[
-      {label:'Distribution',data:distData,backgroundColor:'rgba(52,211,153,0.7)',stack:'a'},
       {label:'Principal Paydown',data:paydownData,backgroundColor:'rgba(96,165,250,0.7)',stack:'a'},
+      {label:'Distribution',data:distData,backgroundColor:'rgba(52,211,153,0.7)',stack:'a'},
       {label:'Surplus / (Shortfall)',data:surplusData,backgroundColor:surplusData.map(v=>v>=0?'rgba(167,139,250,0.7)':'rgba(248,113,113,0.7)'),borderColor:'rgba(167,139,250,0.7)',stack:'a'},
       {label:'Net Cash Flow',data:ncfData,type:'line',borderColor:'#fbbf24',pointRadius:0,tension:0.3,borderWidth:2,order:0}
     ]},
