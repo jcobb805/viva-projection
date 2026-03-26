@@ -165,7 +165,7 @@ tr:hover td{background:#1e2030}
   </div>
   <div class="chart-row">
     <div class="chart-box"><h3>Debt Balance with Paydown Schedule</h3><canvas id="chartDistDebt"></canvas></div>
-    <div class="chart-box"><h3>Monthly Surplus / (Shortfall)</h3><canvas id="chartDistSurplus"></canvas></div>
+    <div class="chart-box"><h3>Surplus / (Shortfall)</h3><canvas id="chartDistSurplus"></canvas></div>
   </div>
   <div class="chart-box">
     <h3>Annual Distribution &amp; Paydown Schedule</h3>
@@ -282,6 +282,7 @@ Chart.defaults.plugins.tooltip.callbacks = {
     return ctx.dataset.label + ': ' + fmtFull(v);
   }
 };
+Chart.defaults.interaction = {mode:'index',intersect:false};
 const gridColor = '#1e2030';
 const yScale = (pos='left') => ({position:pos,grid:{color:gridColor},ticks:{callback:v=>fmt(v)}});
 
@@ -749,7 +750,7 @@ function renderDistributions(){
     data:{labels,datasets:[
       {label:'Distribution',data:distData,backgroundColor:'rgba(52,211,153,0.7)',stack:'a'},
       {label:'Principal Paydown',data:paydownData,backgroundColor:'rgba(96,165,250,0.7)',stack:'a'},
-      {label:'Surplus / (Shortfall)',data:surplusData,backgroundColor:surplusData.map(v=>v>=0?'rgba(167,139,250,0.7)':'rgba(248,113,113,0.7)'),stack:'a'},
+      {label:'Surplus / (Shortfall)',data:surplusData,backgroundColor:surplusData.map(v=>v>=0?'rgba(167,139,250,0.7)':'rgba(248,113,113,0.7)'),borderColor:'rgba(167,139,250,0.7)',stack:'a'},
       {label:'Net Cash Flow',data:ncfData,type:'line',borderColor:'#fbbf24',pointRadius:0,tension:0.3,borderWidth:2,order:0}
     ]},
     options:{responsive:true,interaction:{mode:'index',intersect:false},scales:{x:{grid:{display:false},stacked:true},y:{...yScale(),stacked:true}},plugins:{legend:{position:'top'}}}
