@@ -350,16 +350,28 @@ function renderKPIs(){
     <div class="kpi red"><div class="label">Peak Debt Balance</div><div class="value">${fmt(peakDebt)}</div><div class="sub">Maximum outstanding</div></div>
   `;
 
-  // Cash Flow KPIs
-  const avgNCF = totalNCF / g('ncf').filter(v=>v!==null).length;
-  const maxNCF = Math.max(...g('ncf').filter(v=>v!==null));
-  const minNCF = Math.min(...g('ncf').filter(v=>v!==null));
-  document.getElementById('kpi-cashflow').innerHTML = `
-    <div class="kpi green"><div class="label">Avg Monthly NCF</div><div class="value">${fmtFull(avgNCF)}</div></div>
-    <div class="kpi blue"><div class="label">Peak Monthly NCF</div><div class="value">${fmtFull(maxNCF)}</div></div>
-    <div class="kpi amber"><div class="label">Min Monthly NCF</div><div class="value">${fmtFull(minNCF)}</div></div>
-    <div class="kpi purple"><div class="label">Ending Cash Position</div><div class="value">${fmt(peakCash)}</div></div>
-  `;
+  // Cash Flow KPIs — distribution-aware
+  const distModel = (typeof runDistModel === 'function') ? runDistModel() : null;
+  if(distModel){
+    const dm = distModel.monthly;
+    const last = dm[dm.length-1];
+    const avgSurplus = dm.reduce((s,r)=>s+r.surplus,0)/dm.length;
+    const shortfalls = dm.filter(r=>r.surplus<0).length;
+    document.getElementById('kpi-cashflow').innerHTML =
+      '<div class="kpi green"><div class="label">Avg Monthly Surplus</div><div class="value">'+fmtFull(avgSurplus)+'</div><div class="sub">After dist & paydown</div></div>'+
+      '<div class="kpi blue"><div class="label">Total Distributions</div><div class="value">'+fmt(last.cumDist)+'</div><div class="sub">'+fmtFull(monthlyDist)+'/mo</div></div>'+
+      '<div class="kpi amber"><div class="label">Total Principal Paid</div><div class="value">'+fmt(last.cumPaydown)+'</div><div class="sub">'+fmtFull(monthlyPaydown)+'/mo</div></div>'+
+      '<div class="kpi '+(shortfalls>0?'red':'purple')+'"><div class="label">Shortfall Months</div><div class="value">'+shortfalls+'</div><div class="sub">'+(shortfalls>0?'NCF < dist + paydown':'Fully covered')+'</div></div>';
+  } else {
+    const avgNCF = totalNCF / g('ncf').filter(v=>v!==null).length;
+    const maxNCF = Math.max(...g('ncf').filter(v=>v!==null));
+    const minNCF = Math.min(...g('ncf').filter(v=>v!==null));
+    document.getElementById('kpi-cashflow').innerHTML =
+      '<div class="kpi green"><div class="label">Avg Monthly NCF</div><div class="value">'+fmtFull(avgNCF)+'</div></div>'+
+      '<div class="kpi blue"><div class="label">Peak Monthly NCF</div><div class="value">'+fmtFull(maxNCF)+'</div></div>'+
+      '<div class="kpi amber"><div class="label">Min Monthly NCF</div><div class="value">'+fmtFull(minNCF)+'</div></div>'+
+      '<div class="kpi purple"><div class="label">Ending Cash Position</div><div class="value">'+fmt(peakCash)+'</div></div>';
+  }
 
   // Debt KPIs
   const debtSvcMonths = g('debtSvc').filter(v=>v!==null&&v>0).length;
@@ -399,6 +411,7 @@ function renderKPIs(){
 }
 
 function renderCharts(){
+  renderKPIs();
   destroyAll();
 
   // ── OVERVIEW TAB ──
